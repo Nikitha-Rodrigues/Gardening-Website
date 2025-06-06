@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Plant Recognition</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { background: #1a3e2f; color: #fff; font-family: sans-serif; }
+        .container { max-width: 600px; margin: 40px auto; background: #2d6a4f; padding: 30px; border-radius: 16px; }
+        .result { background: #b7e4c7; color: #1a3e2f; padding: 16px; border-radius: 10px; margin-top: 20px; }
+        .dashboard-btn {
+            position: absolute;
+            top: 24px;
+            right: 36px;
+            background: #74c69d;
+            color: #1a3e2f;
+            padding: 10px 22px;
+            border-radius: 24px;
+            font-weight: bold;
+            text-decoration: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: background 0.2s;
+        }
+        .dashboard-btn:hover { background: #b7e4c7; }
+    </style>
+</head>
+<body>
+    <a href="dashboard.html" class="dashboard-btn">Dashboard</a>
+    <div class="container">
+        <h2>Plant Recognition</h2>
+        <form id="plant-form">
+            <label for="plant-image">Upload a plant image:</label><br>
+            <input type="file" id="plant-image" accept="image/*" required>
+            <button type="submit" class="btn btn-primary" style="margin-top:10px;">Identify Plant</button>
+        </form>
+        <div id="result" class="result" style="display:none;"></div>
+    </div>
+    <script>
+        document.getElementById('plant-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('plant-image');
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'none';
+            resultDiv.innerHTML = 'Identifying...';
+
+            if (!fileInput.files.length) {
+                resultDiv.innerHTML = 'Please select an image.';
+                resultDiv.style.display = 'block';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('organs', 'flower'); // Add this line
+
+            try {
+                const response = await fetch(
+                    'http://localhost:3001/plantnet',
+                    {
+                        method: 'POST',
+                        body: formData
+                    }
+                );
+                const data = await response.json();
+
+                if (!data.results || !data.results.length) {
+                    resultDiv.innerHTML = 'No plant identified. Try another image.';
+                    resultDiv.style.display = 'block';
+                    return;
+                }
+
+                // Take the best result
+                const best = data.results[0];
+                const scientificName = best.species.scientificName || 'N/A';
+                const genus = best.species.genus && best.species.genus.scientificName ? best.species.genus.scientificName : 'N/A';
+                const family = best.species.family && best.species.family.scientificName ? best.species.family.scientificName : 'N/A';
+                const commonNames = best.species.commonNames && best.species.commonNames.length ? best.species.commonNames.join(', ') : 'N/A';
+
+                resultDiv.innerHTML = `
+                    <strong>Scientific Name:</strong> ${scientificName}<br>
+                    <strong>Genus:</strong> ${genus}<br>
+                    <strong>Family:</strong> ${family}<br>
+                    <strong>Common Names:</strong> ${commonNames}
+                `;
+                resultDiv.style.display = 'block';
+            } catch (err) {
+                resultDiv.innerHTML = 'Error identifying plant. Please try again.';
+                resultDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
